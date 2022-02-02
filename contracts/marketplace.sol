@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 contract MarketPlace{
 
-    event OfferingPlaced(bytes32 indexed offeringId, address indexed hostContract, address indexed offerer,  uint tokenId, uint price, string uri);
-    event OfferingClosed(bytes32 indexed offeringId, address indexed buyer);
+    event offerCreated(bytes32 indexed offerId, address indexed hostContract, address indexed offerer,  uint tokenId, uint price, string uri);
+    event OfferClosed(bytes32 indexed offerId, address indexed buyer);
     event BalanceWithdrawn (address indexed beneficiary, uint amount);
     
 
@@ -21,45 +21,56 @@ contract MarketPlace{
         bool closed; 
     }
     
-    mapping (bytes32 => offering) offeringRegistry;
-    mapping (address => uint) balances;
+    mapping (bytes32 => offering) public offeringRegistry;
+    mapping (address => uint) public balances;
+    uint public companyBalance ;
     bytes32[] public offersids;
 
+    uint public fee = 1; // 1% commision for each deal;
+
+    address public operator;
     
-    function getNftOwner(address _hostContract, uint _tokenId) external view returns (address){
-        ERC721 hostContract = ERC721(_hostContract);
-        address owner = hostContract.ownerOf(_tokenId);
-        return owner;
+    constructor(){
+        operator = msg.sender;
     }
 
+    function changeOperator(address _operator) external{
+        require(msg.sender == operator, "Only current operator can change it");
+        operator = _operator;
 
-    function placeOffering (address _hostContract, uint _tokenId, uint _price) external {
+    }
+
+    function createOffer(address _hostContract, uint _tokenId, uint _price) external {
 
         ERC721 hostContract = ERC721(_hostContract);        
         address NftOwner = hostContract.ownerOf(_tokenId);
 
         require (msg.sender == NftOwner, "Only owner of NFT can create offerings");
 
-        bytes32 offeringId = keccak256(abi.encodePacked(offeringNonce, _hostContract, _tokenId));
-        offersids.push(offeringId);
-        offeringRegistry[offeringId].offerer = msg.sender;
-        offeringRegistry[offeringId].hostContract = _hostContract;
-        offeringRegistry[offeringId].tokenId = _tokenId;
-        offeringRegistry[offeringId].price = _price;
+        bytes32 offerId = keccak256(abi.encodePacked(offeringNonce, _hostContract, _tokenId));
+        offersids.push(offerId);
+        offeringRegistry[offerId].offerer = msg.sender;
+        offeringRegistry[offerId].hostContract = _hostContract;
+        offeringRegistry[offerId].tokenId = _tokenId;
+        offeringRegistry[offerId].price = _price;
         offeringNonce += 1;
         
         string memory uri = hostContract.tokenURI(_tokenId);
-        emit  OfferingPlaced(offeringId, _hostContract, msg.sender, _tokenId, _price, uri);
+        emit  offerCreated(offerId, _hostContract, msg.sender, _tokenId, _price, uri);
     }
     
-    function closeOffering(bytes32 _offeringId) external payable {
-        require(msg.value >= offeringRegistry[_offeringId].price, "Not enough funds to buy");
-        require(offeringRegistry[_offeringId].closed != true, "Offering is closed");
-        ERC721 hostContract = ERC721(offeringRegistry[_offeringId].hostContract);
-        hostContract.safeTransferFrom(offeringRegistry[_offeringId].offerer, msg.sender, offeringRegistry[_offeringId].tokenId);
-        offeringRegistry[_offeringId].closed = true;
-        balances[offeringRegistry[_offeringId].offerer] += msg.value;  // Минус комисия
-        emit OfferingClosed(_offeringId, msg.sender);
+    function closeOffer(bytes32 _offerId) external payable {
+        require(msg.value >= offeringRegistry[_offerId].price, "Not enough funds to buy");
+        require(offeringRegistry[_offerId].closed != true, "Offering is closed");
+        ERC721 hostContract = ERC721(offeringRegistry[_offerId].hostContract);
+        hostContract.safeTransferFrom(offeringRegistry[_offerId].offerer, msg.sender, offeringRegistry[_offerId].tokenId);
+        offeringRegistry[_offerId].closed = true;
+
+        uint commision = msg.value * fee / 100;
+
+        balances[offeringRegistry[_offerId].offerer] += (msg.value - commision);
+        companyBalance += commision;
+        emit OfferClosed(_offerId, msg.sender);
     } 
 
     function withdrawBalance() external {
@@ -70,13 +81,9 @@ contract MarketPlace{
         emit BalanceWithdrawn(msg.sender, amount);
     }
 
-
-    function viewOfferingNFT(bytes32 _offeringId) external view returns (address, uint, uint, bool){
-        return (offeringRegistry[_offeringId].hostContract, offeringRegistry[_offeringId].tokenId, offeringRegistry[_offeringId].price, offeringRegistry[_offeringId].closed);
+    function companyWithdrawaL() external {
+        require(msg.sender == operator, "Only current operator can do it");
+        payable(msg.sender).transfer(companyBalance);
+        companyBalance = 0;
     }
-
-    function viewBalances(address _address) external view returns (uint) {
-        return (balances[_address]);
-    }
-
 }
