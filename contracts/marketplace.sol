@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
@@ -81,7 +81,7 @@ contract MarketPlace{
         emit BalanceWithdrawn(msg.sender, amount);
     }
 
-    function companyWithdrawaL() external {
+    function companyWithdrawal() external {
         require(msg.sender == operator, "Only current operator can do it");
         payable(msg.sender).transfer(companyBalance);
         companyBalance = 0;
