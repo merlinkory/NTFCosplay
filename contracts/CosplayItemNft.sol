@@ -3,21 +3,13 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
-contract CosplayItemNft is ERC721URIStorage {
+contract CosplayItemNft is ERC721URIStorage {    
     
-    
-    uint public _tokenIds;
-    
-    
-    /**
-     *  коллекция под свойстава
-     */
-    
+    uint public _tokenIds;          
 
     constructor() ERC721("COSPLAYTOKEN", "COSPLAY") {
         _tokenIds = 0;
-    }
-    
+    }    
 
     function mint(string memory tokenURI)
         public
