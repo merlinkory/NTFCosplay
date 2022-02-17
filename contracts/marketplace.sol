@@ -17,6 +17,7 @@ contract MarketPlace{
         address offerer;
         address hostContract;
         uint tokenId;
+        string uri;
         uint price;
         bool closed; 
     }
@@ -47,15 +48,18 @@ contract MarketPlace{
 
         require (msg.sender == NftOwner, "Only owner of NFT can create offerings");
 
+        string memory uri = hostContract.tokenURI(_tokenId);
+
         bytes32 offerId = keccak256(abi.encodePacked(offeringNonce, _hostContract, _tokenId));
         offersids.push(offerId);
         offeringRegistry[offerId].offerer = msg.sender;
         offeringRegistry[offerId].hostContract = _hostContract;
         offeringRegistry[offerId].tokenId = _tokenId;
+        offeringRegistry[offerId].uri = uri;
         offeringRegistry[offerId].price = _price;
         offeringNonce += 1;
         
-        string memory uri = hostContract.tokenURI(_tokenId);
+        
         emit  offerCreated(offerId, _hostContract, msg.sender, _tokenId, _price, uri);
     }
     
