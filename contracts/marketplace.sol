@@ -81,7 +81,7 @@ contract MarketPlace{
         emit BalanceWithdrawn(msg.sender, amount);
     }
 
-    function companyWithdrawaL() external {
+    function companyWithdrawal() external {
         require(msg.sender == operator, "Only current operator can do it");
         payable(msg.sender).transfer(companyBalance);
         companyBalance = 0;
