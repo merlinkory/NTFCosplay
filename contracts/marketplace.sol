@@ -48,7 +48,7 @@ contract MarketPlace{
     function offersByAddress(address _address, bool _active) external view returns(uint[] memory){
         uint[] memory results = new uint[](tokenBalances[_address]);
         uint counter = 0;
-        for(uint i = 0; i<=offers.length; i++){
+        for(uint i = 0; i<offers.length; i++){
             if(offers[i].owner == _address && offers[i].active == _active){
                 results[counter] = i;
                 counter++;
