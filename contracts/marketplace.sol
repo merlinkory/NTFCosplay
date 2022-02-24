@@ -87,7 +87,7 @@ contract MarketPlace{
 
         //adding royalty to origin price
         uint royaltyAmount = 0;
-        if (tokenRoyalty > 0){
+        if (tokenRoyalty > 0 && nftOwner != nftCreator){
             royaltyAmount = _price * tokenRoyalty / 100;
             _price = _price + royaltyAmount;
         }
@@ -96,7 +96,8 @@ contract MarketPlace{
 
         offers.push(offering(nftCreator,msg.sender,_hostContract,_tokenId,uri,_price,royaltyAmount, true));
 
-        offerCountByAddress[msg.sender]++;                   
+        offerCountByAddress[msg.sender]++;   
+        offerCount++;                
         emit  offerCreated(offers.length, _hostContract, msg.sender, _tokenId, _price, uri);
     }
     
