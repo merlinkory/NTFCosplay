@@ -20,16 +20,17 @@ contract MarketPlace{
         uint tokenId;
         string uri;
         uint price;
-        uint royaltyAmount;
-        bool active; 
+        uint royaltyAmount; 
     }
     
-    // mapping (bytes32 => offering) public offeringRegistry;
     offering[] public offers;
     
+    mapping(address=>offering[]) public offerHistory;
+
     mapping (address => uint) public balances;
     mapping (address => uint) public offerCountByAddress;
     mapping (uint =>uint) public royaltyByTokenId;
+    mapping (uint => bool) public isTokenSale;
 
     uint public offerCount = 0; // total offers in marketplace
 
@@ -44,17 +45,21 @@ contract MarketPlace{
         operator = msg.sender;
     }
 
+    function getCountHistoryByAddress(address _address) public view returns(uint){
+        return offerHistory[_address].length;
+    }
+
     function changeOperator(address _operator) external{
         require(msg.sender == operator, "Only current operator can change it");
         operator = _operator;
 
     }
 
-    function offersByAddress(address _address, bool _active) external view returns(uint[] memory){
+    function offersByAddress(address _address) external view returns(uint[] memory){
         uint[] memory results = new uint[](offerCountByAddress[_address]);
         uint counter = 0;
         for(uint i = 0; i<offers.length; i++){
-            if(offers[i].owner == _address && offers[i].active == _active){
+            if(offers[i].owner == _address){
                 results[counter] = i;
                 counter++;
             }
@@ -70,7 +75,7 @@ contract MarketPlace{
     }
 
     function createOffer(address _hostContract, uint _tokenId, uint _price, uint _royalty) external {
-
+        require(isTokenSale[_tokenId] == false, "Token already on sale");
         cosplayNft hostContract = cosplayNft(_hostContract);        
         address nftOwner = hostContract.ownerOf(_tokenId);
         address nftCreator = hostContract.getNftCreator(_tokenId);
@@ -94,24 +99,25 @@ contract MarketPlace{
 
         string memory uri = hostContract.tokenURI(_tokenId);
 
-        offers.push(offering(nftCreator,msg.sender,_hostContract,_tokenId,uri,_price,royaltyAmount, true));
+        offers.push(offering(nftCreator,msg.sender,_hostContract,_tokenId,uri,_price,royaltyAmount));
 
         offerCountByAddress[msg.sender]++;   
-        offerCount++;                
+        offerCount++;
+
+        isTokenSale[_tokenId] = true;
+
         emit  offerCreated(offers.length, _hostContract, msg.sender, _tokenId, _price, uri);
     }
     
     function closeOffer(uint _offerId) external payable {
         require(msg.sender != offers[_offerId].owner, "Owner cant buy from himself");
         require(msg.value == offers[_offerId].price, "Not enough funds to buy");
-        require(offers[_offerId].active != false, "Offering is closed");
 
         uint tokenId = offers[_offerId].tokenId;
       
 
         cosplayNft hostContract = cosplayNft(offers[_offerId].hostContract);
-        hostContract.safeTransferFrom(offers[_offerId].owner, msg.sender, tokenId);
-        offers[_offerId].active = false;
+        hostContract.safeTransferFrom(offers[_offerId].owner, msg.sender, tokenId);    
 
         //send royalty
         if(offers[_offerId].royaltyAmount > 0){
@@ -122,6 +128,12 @@ contract MarketPlace{
 
         balances[offers[_offerId].owner] += (msg.value - commision);
         companyBalance += commision;
+
+        
+        offerHistory[offers[_offerId].owner].push(offers[_offerId]);
+        isTokenSale[tokenId] = false;
+        delete offers[_offerId];
+        
         emit OfferClosed(_offerId, msg.sender);
     } 
 
